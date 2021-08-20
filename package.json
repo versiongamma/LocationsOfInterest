@@ -1,0 +1,11 @@
+{
+  "name": "locationsofinterest",
+  "version": "0.0.1",
+  "main": "index.js",
+  "author": "Matt <37131904+versiongamma@users.noreply.github.com>",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "cheerio": "^1.0.0-rc.10"
+  }
+}
