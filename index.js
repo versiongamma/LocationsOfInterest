@@ -6,9 +6,22 @@ const URL = 'https://www.health.govt.nz/our-work/diseases-and-conditions/covid-1
 
 axios.get(URL)
 .then(response => {
-    const $ = cheerio.load(response.data);
-    let table = '<table>\n' + $('.table-style-two').html() + '\n</table>';
-    //console.log(table.html());
 
-    fs.writeFile('index.html', table, ()=>{})
+    let locationNames = [];
+    let addresses = [];
+    let days = [];
+    let times = [];
+    let dateAdded = [];
+
+    const $ = cheerio.load(response.data);
+    $('table > tbody > tr').each((i , row) => {
+        locationNames.push($($(row).find('td')[0]).text());
+        addresses.push($($(row).find('td')[1]).text());
+        days.push($($(row).find('td')[2]).text());
+        times.push($($(row).find('td')[3]).text());
+        dateAdded.push($($(row).find('td')[5]).text());
+    })
+
+    //console.log(addresses);
+
 })
