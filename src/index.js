@@ -20,20 +20,22 @@ const App = () => {
   useEffect(() => {
     // Get cookies
     let previouslySeen = [];
-        for (const cookie of document.cookie.split('; ')) {
-          if (cookie.split('=')[0] === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
-            previouslySeen = cookie.split('=')[1].split('|');
-          }
+    for (const cookie of document.cookie.split('; ')) {
+      if (cookie.split('=')[0] === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
+        previouslySeen = cookie.split('=')[1].split('|');
+      }
 
-          if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
-          if (cookie.split('=')[0] === 'show') setShowInstructions(cookie.split('=')[1] === 'true');
-        }
+      if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
+
+      if (cookie.split('=')[0] === 'show') setShowInstructions(cookie.split('=')[1] === 'true');
+    }
 
     fetch('https://placesofinterest.azurewebsites.net/')
       .then(res => res.json())
       .then(res => {
-        res.sort((a, b) => new Date(b.added) - new Date(a.added));
+        res.sort((a,b) => new Date(b.date) - new Date(a.date))
         setData(res);
+
 
         // Get the locations for the current day
         let currentDay = [];
@@ -43,26 +45,19 @@ const App = () => {
         let newLocs = [];
         for (const loc of currentDay) if (!previouslySeen.includes(loc)) newLocs.push(loc);
         setNewLocations(newLocs);
-      });
+      })
+
+      
   }, []);
-
-  const handleSortChange = (event) => {
-    setSortMethod(event.target.value);
-    if (event.target.value === 0) setData(data.sort((a, b) => new Date(b.added) - new Date(a.added)));
-    
-    if (event.target.value === 1) {
-      setData(data.sort((a, b) => {
-        return new Date(b.date) - new Date(a.date)
-      }))
-    }
-
-    document.cookie = 'sort=' + event.target.value
-  }
 
   const handleShowButton = () => {
     setShowInstructions(!showInstructions);
-
     document.cookie = 'show=' + !showInstructions;
+  }
+
+  const handleSetSort = (event) => {
+    setSortMethod(event.target.value);
+    document.cookie = 'sort=' + event.target.value;
   }
 
   const getDateFormat = (date) => {
@@ -92,7 +87,7 @@ const App = () => {
                 <Select
 
                   value={sortMethod}
-                  onChange={handleSortChange}
+                  onChange={handleSetSort}
                 >
                   <MenuItem value={0}>Date Added</MenuItem>
                   <MenuItem value={1}>Date at Location</MenuItem>
@@ -135,8 +130,10 @@ const App = () => {
                   row.name.toLowerCase().includes(filter) ||
                   row.address.toLowerCase().includes(filter) ||
                   row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ').toLowerCase().includes(filter)
-                ).map(row => (
-                  <TableRow style={{backgroundColor: newLocations.includes(row.name) ? '#ffeeee' : '#ffffff'}}>
+                )
+                .sort((a, b) => sortMethod === 0 ? new Date(b.added) - new Date(a.added) : new Date(b.date) - new Date(a.date))
+                .map(row => (
+                  <TableRow style={{ backgroundColor: newLocations.includes(row.name) ? '#ffeeee' : '#ffffff' }}>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.address}</TableCell>
                     <TableCell>{getDateFormat(row.date)}</TableCell>
