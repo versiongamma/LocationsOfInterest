@@ -16,22 +16,24 @@ const App = () => {
   const [filter, setFilter] = useState('');
   const windowSize = useWindowSize();
 
+  // On page load
   useEffect(() => {
+    // Get cookies
+    let previouslySeen = [];
+        for (const cookie of document.cookie.split('; ')) {
+          if (cookie.split('=')[0] === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
+            previouslySeen = cookie.split('=')[1].split('|');
+          }
+
+          if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
+          if (cookie.split('=')[0] === 'show') setShowInstructions(cookie.split('=')[1] === 'true');
+        }
+
     fetch('https://placesofinterest.azurewebsites.net/')
       .then(res => res.json())
       .then(res => {
         res.sort((a, b) => new Date(b.added) - new Date(a.added));
         setData(res);
-
-        // ** Get the locations that the user hasn't seen yet  ** //
-
-        // Get locations already seen from page cookie, for the current day
-        let previouslySeen = [];
-        for (const cookie of document.cookie.split('; ')) {
-          if (cookie.split('=')[0] === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
-            previouslySeen = cookie.split('=')[1].split('|');
-          }
-        }
 
         // Get the locations for the current day
         let currentDay = [];
@@ -53,6 +55,14 @@ const App = () => {
         return new Date(b.date) - new Date(a.date)
       }))
     }
+
+    document.cookie = 'sort=' + event.target.value
+  }
+
+  const handleShowButton = () => {
+    setShowInstructions(!showInstructions);
+
+    document.cookie = 'show=' + !showInstructions;
   }
 
   const getDateFormat = (date) => {
@@ -91,8 +101,8 @@ const App = () => {
             </Grid>
             <Grid item>
               <FormControlLabel
-                control={<Switch checked={showInstructions} onChange={() => setShowInstructions(!showInstructions)} />}
-                label="Show Ministry of Health Instruction"
+                control={<Switch checked={showInstructions} onChange={handleShowButton} />}
+                label="Show Ministry of Health Instructions"
               />
             </Grid>
             <Grid item >
