@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 
-import { Container, Table, TableBody, TableCell, TableHead, TableRow, FormControlLabel, Switch, Paper, TextField, InputAdornment, Grid, Select, MenuItem, FormControl, InputLabel, CircularProgress } from '@material-ui/core';
+import { Container, Table, TableBody, TableCell, TableHead, TableRow, FormControlLabel, Switch, Paper, TextField, InputAdornment, Grid, Select, MenuItem, FormControl, InputLabel, CircularProgress, Button } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search'
 import { format } from 'date-format-parse';
 
@@ -12,6 +12,7 @@ const App = () => {
   const [data, setData] = useState();
   const [showInstructions, setShowInstructions] = useState(false);
   const [sortMethod, setSortMethod] = useState(0);
+  const [newLocations, setNewLocations] = useState([]);
   const [filter, setFilter] = useState('');
   const windowSize = useWindowSize();
 
@@ -21,13 +22,46 @@ const App = () => {
       .then(res => {
         res.sort((a, b) => new Date(b.added) - new Date(a.added));
         setData(res);
+
+        // ** Get the locations that the user hasn't seen yet  ** //
+
+        // Get locations already seen from page cookie, for the current day
+        let previouslySeen = [];
+        for (const cookie of document.cookie.split('; ')) {
+          if (cookie.split('=')[0] === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
+            previouslySeen = cookie.split('=')[1].split('|');
+          }
+        }
+
+        // Get the locations for the current day
+        let currentDay = [];
+        for (const row of res) if (new Date(row.added).getDate() === new Date().getDate()) currentDay.push(row.name)
+        document.cookie = new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear() + '=' + currentDay.join('|');
+
+        let newLocs = [];
+        for (const loc of currentDay) if (!previouslySeen.includes(loc)) newLocs.push(loc);
+        setNewLocations(newLocs);
       });
   }, []);
 
   const handleSortChange = (event) => {
     setSortMethod(event.target.value);
     if (event.target.value === 0) setData(data.sort((a, b) => new Date(b.added) - new Date(a.added)));
-    if (event.target.value === 1) setData(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+    
+    if (event.target.value === 1) {
+      setData(data.sort((a, b) => {
+        return new Date(b.date) - new Date(a.date)
+      }))
+    }
+  }
+
+  const getDateFormat = (date) => {
+    date = new Date(date);
+    return (
+      format(date, 'dddd D') + (format(date, 'D') === '1' ? 'st' : format(date, 'D') === '2' ? 'nd' :
+        format(date, 'D') === '21' ? 'st' : format(date, 'D') === '22' ? 'nd' :
+          format(date, 'D') === '31' ? 'st' : 'th') + format(date, ' MMMM')
+    )
   }
 
   return (
@@ -58,14 +92,24 @@ const App = () => {
             <Grid item>
               <FormControlLabel
                 control={<Switch checked={showInstructions} onChange={() => setShowInstructions(!showInstructions)} />}
-                label="Show What to Do"
+                label="Show Ministry of Health Instruction"
               />
+            </Grid>
+            <Grid item >
+              <Button variant='outlined' onClick={() => setNewLocations([])}>Mark New as Seen</Button>
             </Grid>
           </Grid>
         </Paper>
         <Paper style={{ height: windowSize.height - 130, overflowY: 'scroll', marginTop: 20 }}>
           {data !== undefined ? (
             <Table stickyHeader>
+              <colgroup>
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
+              </colgroup>
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
@@ -73,28 +117,19 @@ const App = () => {
                   <TableCell>Date</TableCell>
                   <TableCell>Time</TableCell>
                   <TableCell>Date Added</TableCell>
-                  {showInstructions ? <TableCell>What to Do</TableCell> : null}
+                  {showInstructions ? <TableCell>Instructions</TableCell> : null}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.filter(row => 
-                  row.name.toLowerCase().includes(filter) || 
-                  row.address.toLowerCase().includes(filter) || 
-                  row.time.toLowerCase().includes(filter)
-                  ).map(row => (
-                  <TableRow>
+                {data.filter(row =>
+                  row.name.toLowerCase().includes(filter) ||
+                  row.address.toLowerCase().includes(filter) ||
+                  row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ').toLowerCase().includes(filter)
+                ).map(row => (
+                  <TableRow style={{backgroundColor: newLocations.includes(row.name) ? '#ffeeee' : '#ffffff'}}>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.address}</TableCell>
-                    <TableCell>
-                      {
-                        format(new Date(row.date), 'dddd D') +
-                        (format(new Date(row.date), 'D') === '1' ? 'st' :
-                          format(new Date(row.date), 'D') === '2' ? 'nd' :
-                            format(new Date(row.date), 'D') === '21' ? 'st' :
-                              format(new Date(row.date), 'D') === '22' ? 'nd' :
-                                format(new Date(row.date), 'D') === '31' ? 'st' : 'th')
-                      }
-                    </TableCell>
+                    <TableCell>{getDateFormat(row.date)}</TableCell>
                     <TableCell>{row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ')}</TableCell>
                     <TableCell>
                       {
@@ -111,7 +146,7 @@ const App = () => {
                 ))}
               </TableBody>
             </Table>
-          ) : <CircularProgress style={{position: 'fixed', top: '45%', left: '48%'}}/>}
+          ) : <CircularProgress style={{ position: 'fixed', top: '45%', left: '48%' }} />}
         </Paper>
       </Container>
     </>
