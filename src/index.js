@@ -12,7 +12,6 @@ const App = () => {
   const [data, setData] = useState();
   const [sortMethod, setSortMethod] = useState(0);
   const [newLocations, setNewLocations] = useState([]);
-  const [regions, setRegions] = useState([]);
   const [region, setRegion] = useState('All');
   const [filter, setFilter] = useState('');
   const windowSize = useWindowSize();
@@ -22,34 +21,32 @@ const App = () => {
     // Get cookies
     let previouslySeen = [];
     for (const cookie of document.cookie.split('; ')) {
-      if (cookie.split('=')[0] === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
-        previouslySeen = cookie.split('=')[1].split('|');
+      if (cookie.split('=')[0].slice(0, -1) === new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear()) {
+        previouslySeen = [...previouslySeen, ...cookie.split('=')[1].split('|')]
       }
 
-      if (cookie.split('=')[0] === 'region')  {
-        setRegion(cookie.split('=')[1]);
-        setRegions([cookie.split('=')[1]]);
-      }
-
+      if (cookie.split('=')[0] === 'region') setRegion(cookie.split('=')[1])
       if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
       
     }
 
-    fetch('https://placesofinterest.azurewebsites.net/')
+    fetch('https://locationsofinterest.herokuapp.com/')
       .then(res => res.json())
       .then(res => {
         setData(res);
 
+        console.log(res);
+
         // Get the locations for the current day
         let currentDay = [];
-        let allRegions = [];
         for (const row of res) {
           if (new Date(row.added).getDate() === new Date().getDate()) currentDay.push(row.name)
-          if (!allRegions.includes(row.location)) allRegions.push(row.location)
         }
 
-        setRegions(allRegions);
-        document.cookie = new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear() + '=' + currentDay.join('|');
+        for (let [i, chunk] of (currentDay.join('|').match(/(.|[\r\n]){1,4000}/g)).entries()) {
+          document.cookie = new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear() + i + '=' + chunk;
+        }
+        
 
         let newLocs = [];
         for (const loc of currentDay) if (!previouslySeen.includes(loc)) newLocs.push(loc);
@@ -98,16 +95,16 @@ const App = () => {
               </FormControl>
             </Grid>
            <Grid item>
-              <FormControl disabled={data === undefined}>
+              <FormControl>
                 <InputLabel>Region</InputLabel>
                 <Select
                   value={region}
                   onChange={handleSetRegion}
                 >
                   <MenuItem value={'All'}>All</MenuItem>
-                  {regions.map(r => (
-                    <MenuItem value={r}>{r}</MenuItem>
-                  ))}
+                  <MenuItem value={'Auckland'}>Auckland</MenuItem>
+                  <MenuItem value={'Wellington'}>Wellington</MenuItem>
+                  <MenuItem value={'Coromandel'}>Coromandel</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -120,9 +117,8 @@ const App = () => {
           {data !== undefined ? (
             <Table stickyHeader>
               <colgroup>
-              <col style={{ width: '20%' }} />
                 <col style={{ width: '20%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '20%' }} />
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
@@ -132,7 +128,6 @@ const App = () => {
                 <TableRow>
                   <TableCell>Name</TableCell>
                   <TableCell>Address</TableCell>
-                  <TableCell>Region</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Time</TableCell>
                   <TableCell>Date Added</TableCell>
@@ -140,8 +135,9 @@ const App = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {[...data].filter(row =>
-                  row.location.includes(region !== 'All' ? region : '') && (
+                {[...data].filter(row => 
+                  (row.name.toLowerCase().includes(region !== 'All' ? region.toLowerCase() : '') ||
+                  row.address.toLowerCase().includes(region !== 'All' ? region.toLowerCase() : '')) && (
                   row.name.toLowerCase().includes(filter) ||
                   row.address.toLowerCase().includes(filter) ||
                   getTimeFormat(row.time).toLowerCase().includes(filter))

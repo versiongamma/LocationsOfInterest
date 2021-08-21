@@ -29,7 +29,6 @@ const Row = (props) => {
 
         <TableCell>{props.name}</TableCell>
         <TableCell>{props.address}</TableCell>
-        <TableCell>{props.location}</TableCell>
         <TableCell>{getDateFormat(props.date)}</TableCell>
         <TableCell>{getTimeFormat(props.time)}</TableCell>
         <TableCell>{getDateFormat(props.added)}</TableCell>
