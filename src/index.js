@@ -13,6 +13,8 @@ const App = () => {
   const [showInstructions, setShowInstructions] = useState(false);
   const [sortMethod, setSortMethod] = useState(0);
   const [newLocations, setNewLocations] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [region, setRegion] = useState('All');
   const [filter, setFilter] = useState('');
   const windowSize = useWindowSize();
 
@@ -26,20 +28,24 @@ const App = () => {
       }
 
       if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
-
       if (cookie.split('=')[0] === 'show') setShowInstructions(cookie.split('=')[1] === 'true');
+      if (cookie.split('=')[0] === 'region') setRegion(cookie.split('=')[1]);
     }
 
     fetch('https://placesofinterest.azurewebsites.net/')
       .then(res => res.json())
       .then(res => {
-        res.sort((a,b) => new Date(b.date) - new Date(a.date))
         setData(res);
-
 
         // Get the locations for the current day
         let currentDay = [];
-        for (const row of res) if (new Date(row.added).getDate() === new Date().getDate()) currentDay.push(row.name)
+        let allRegions = [];
+        for (const row of res) {
+          if (new Date(row.added).getDate() === new Date().getDate()) currentDay.push(row.name)
+          if (!allRegions.includes(row.location)) allRegions.push(row.location)
+        }
+
+        setRegions(allRegions);
         document.cookie = new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear() + '=' + currentDay.join('|');
 
         let newLocs = [];
@@ -58,6 +64,11 @@ const App = () => {
   const handleSetSort = (event) => {
     setSortMethod(event.target.value);
     document.cookie = 'sort=' + event.target.value;
+  }
+
+  const handleSetRegion = (event) => {
+    setRegion(event.target.value);
+    document.cookie = 'region=' + event.target.value;
   }
 
   const getDateFormat = (date) => {
@@ -85,12 +96,25 @@ const App = () => {
               <FormControl>
                 <InputLabel>Sort Method</InputLabel>
                 <Select
-
                   value={sortMethod}
                   onChange={handleSetSort}
                 >
                   <MenuItem value={0}>Date Added</MenuItem>
                   <MenuItem value={1}>Date at Location</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+           <Grid item>
+              <FormControl>
+                <InputLabel>Region</InputLabel>
+                <Select
+                  value={region}
+                  onChange={handleSetRegion}
+                >
+                  <MenuItem value={'All'}>All</MenuItem>
+                  {regions.map(r => (
+                    <MenuItem value={r}>{r}</MenuItem>
+                  ))}
                 </Select>
               </FormControl>
             </Grid>
@@ -114,11 +138,13 @@ const App = () => {
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} />
               </colgroup>
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
                   <TableCell>Address</TableCell>
+                  <TableCell>Region</TableCell>
                   <TableCell>Date</TableCell>
                   <TableCell>Time</TableCell>
                   <TableCell>Date Added</TableCell>
@@ -126,16 +152,18 @@ const App = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.filter(row =>
+                {[...data].filter(row =>
+                  row.location.includes(region !== 'All' ? region : '') && (
                   row.name.toLowerCase().includes(filter) ||
                   row.address.toLowerCase().includes(filter) ||
-                  row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ').toLowerCase().includes(filter)
+                  row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ').toLowerCase().includes(filter))
                 )
                 .sort((a, b) => sortMethod === 0 ? new Date(b.added) - new Date(a.added) : new Date(b.date) - new Date(a.date))
                 .map(row => (
                   <TableRow style={{ backgroundColor: newLocations.includes(row.name) ? '#ffeeee' : '#ffffff' }}>
                     <TableCell>{row.name}</TableCell>
                     <TableCell>{row.address}</TableCell>
+                    <TableCell>{row.location}</TableCell>
                     <TableCell>{getDateFormat(row.date)}</TableCell>
                     <TableCell>{row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ')}</TableCell>
                     <TableCell>
@@ -166,4 +194,3 @@ ReactDOM.render(
   </React.StrictMode>,
   document.getElementById('root')
 );
-
