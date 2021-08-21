@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 
-import { Container, Table, TableBody, TableCell, TableHead, TableRow, FormControlLabel, Switch, Paper, TextField, InputAdornment, Grid, Select, MenuItem, FormControl, InputLabel, CircularProgress, Button } from '@material-ui/core';
+import { Container, Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, InputAdornment, Grid, Select, MenuItem, FormControl, InputLabel, CircularProgress, Button } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search'
-import { format } from 'date-format-parse';
 
 import useWindowSize from './hooks/useWindowSize';
+import Row from './components/Row';
 
 const App = () => {
 
   const [data, setData] = useState();
-  const [showInstructions, setShowInstructions] = useState(false);
   const [sortMethod, setSortMethod] = useState(0);
   const [newLocations, setNewLocations] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -27,9 +26,13 @@ const App = () => {
         previouslySeen = cookie.split('=')[1].split('|');
       }
 
+      if (cookie.split('=')[0] === 'region')  {
+        setRegion(cookie.split('=')[1]);
+        setRegions([cookie.split('=')[1]]);
+      }
+
       if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
-      if (cookie.split('=')[0] === 'show') setShowInstructions(cookie.split('=')[1] === 'true');
-      if (cookie.split('=')[0] === 'region') setRegion(cookie.split('=')[1]);
+      
     }
 
     fetch('https://placesofinterest.azurewebsites.net/')
@@ -56,11 +59,6 @@ const App = () => {
       
   }, []);
 
-  const handleShowButton = () => {
-    setShowInstructions(!showInstructions);
-    document.cookie = 'show=' + !showInstructions;
-  }
-
   const handleSetSort = (event) => {
     setSortMethod(event.target.value);
     document.cookie = 'sort=' + event.target.value;
@@ -71,13 +69,8 @@ const App = () => {
     document.cookie = 'region=' + event.target.value;
   }
 
-  const getDateFormat = (date) => {
-    date = new Date(date);
-    return (
-      format(date, 'dddd D') + (format(date, 'D') === '1' ? 'st' : format(date, 'D') === '2' ? 'nd' :
-        format(date, 'D') === '21' ? 'st' : format(date, 'D') === '22' ? 'nd' :
-          format(date, 'D') === '31' ? 'st' : 'th') + format(date, ' MMMM')
-    )
+  const getTimeFormat = (time) => {
+    return time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ')
   }
 
   return (
@@ -105,7 +98,7 @@ const App = () => {
               </FormControl>
             </Grid>
            <Grid item>
-              <FormControl>
+              <FormControl disabled={data === undefined}>
                 <InputLabel>Region</InputLabel>
                 <Select
                   value={region}
@@ -118,12 +111,6 @@ const App = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item>
-              <FormControlLabel
-                control={<Switch checked={showInstructions} onChange={handleShowButton} />}
-                label="Show Ministry of Health Instructions"
-              />
-            </Grid>
             <Grid item >
               <Button variant='outlined' onClick={() => setNewLocations([])}>Mark New as Seen</Button>
             </Grid>
@@ -133,12 +120,13 @@ const App = () => {
           {data !== undefined ? (
             <Table stickyHeader>
               <colgroup>
+              <col style={{ width: '20%' }} />
                 <col style={{ width: '20%' }} />
-                <col style={{ width: '20%' }} />
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
                 <col style={{ width: '10%' }} />
+                <col style={{ width: '1%' }} />
               </colgroup>
               <TableHead>
                 <TableRow>
@@ -148,7 +136,7 @@ const App = () => {
                   <TableCell>Date</TableCell>
                   <TableCell>Time</TableCell>
                   <TableCell>Date Added</TableCell>
-                  {showInstructions ? <TableCell>Instructions</TableCell> : null}
+                  <TableCell>Instructions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -156,29 +144,10 @@ const App = () => {
                   row.location.includes(region !== 'All' ? region : '') && (
                   row.name.toLowerCase().includes(filter) ||
                   row.address.toLowerCase().includes(filter) ||
-                  row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ').toLowerCase().includes(filter))
+                  getTimeFormat(row.time).toLowerCase().includes(filter))
                 )
                 .sort((a, b) => sortMethod === 0 ? new Date(b.added) - new Date(a.added) : new Date(b.date) - new Date(a.date))
-                .map(row => (
-                  <TableRow style={{ backgroundColor: newLocations.includes(row.name) ? '#ffeeee' : '#ffffff' }}>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell>{row.address}</TableCell>
-                    <TableCell>{row.location}</TableCell>
-                    <TableCell>{getDateFormat(row.date)}</TableCell>
-                    <TableCell>{row.time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ')}</TableCell>
-                    <TableCell>
-                      {
-                        format(new Date(row.added), 'D') +
-                        (format(new Date(row.added), 'D') === '1' ? 'st' :
-                          format(new Date(row.added), 'D') === '2' ? 'nd' :
-                            format(new Date(row.added), 'D') === '21' ? 'st' :
-                              format(new Date(row.added), 'D') === '22' ? 'nd' :
-                                format(new Date(row.added), 'D') === '31' ? 'st' : 'th') + format(new Date(row.added), ' MMMM')
-                      }
-                    </TableCell>
-                    {showInstructions ? <TableCell>{row.instructions}</TableCell> : null}
-                  </TableRow>
-                ))}
+                .map(row => (<Row {...row} newLocations={newLocations}/>))}
               </TableBody>
             </Table>
           ) : <CircularProgress style={{ position: 'fixed', top: '45%', left: '48%' }} />}
