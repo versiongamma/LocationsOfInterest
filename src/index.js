@@ -32,6 +32,10 @@ const App = () => {
       }
 
       if (cookie.split('=')[0] === 'region') setRegion(cookie.split('=')[1])
+      if (cookie.split('=')[0] === 'selectedDate') setSelectedDate(new Date(cookie.split('=')[1]))
+      if (cookie.split('=')[0] === 'selectedAdded') setSelectedAdded(new Date(cookie.split('=')[1]))
+      if (cookie.split('=')[0] === 'useDate') setUseDate(cookie.split('=')[1] === 'true')
+      if (cookie.split('=')[0] === 'useAdded') setUseAdded(cookie.split('=')[1] === 'true')
       if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
 
     }
@@ -71,6 +75,26 @@ const App = () => {
     document.cookie = 'region=' + event.target.value;
   }
 
+  const handleSetDate = (date) => {
+    setSelectedDate(date);
+    document.cookie = 'selectedDate=' + date;
+  }
+
+  const handleSetAdded = (date) => {
+    setSelectedAdded(date);
+    document.cookie = 'selectedAdded=' + date;
+  }
+
+  const handleSetUseDate = () => {
+    setUseDate(!useDate);
+    document.cookie = 'useDate=' + !useDate;
+  }
+
+  const handleSetUseAdded = () => {
+    setUseAdded(!useAdded);
+    document.cookie = 'useAdded=' + !useAdded;
+  }
+
   const getTimeFormat = (time) => {
     return time.replaceAll('.', ':').replaceAll(' ', '').replaceAll('-', ' - ')
   }
@@ -95,10 +119,10 @@ const App = () => {
                   label="Date"
                   disabled={!useDate}
                   value={selectedDate}
-                  onChange={(date) => setSelectedDate(date)}
+                  onChange={handleSetDate}
                 />
               </Grid>
-              <Checkbox value={useDate} onChange={() => {setUseDate(!useDate)}} style={{paddingTop: 10}}/>
+              <Checkbox checked={useDate} onChange={handleSetUseDate} style={{paddingTop: 10}}/>
               <Grid item>
               <DatePicker
                   variant="inline"
@@ -106,10 +130,10 @@ const App = () => {
                   label="Added On"
                   disabled={!useAdded}
                   value={selectedAdded}
-                  onChange={(date) => setSelectedAdded(date)}
+                  onChange={handleSetAdded}
                 />
               </Grid>
-              <Checkbox value={useAdded} onChange={() => {setUseAdded(!useAdded)}} style={{paddingTop: 10}}/>
+              <Checkbox checked={useAdded} onChange={handleSetUseAdded} style={{paddingTop: 10}}/>
             </MuiPickersUtilsProvider>
             <Grid item>
               <FormControl>
