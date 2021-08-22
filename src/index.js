@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 
-import { Container, Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, InputAdornment, Grid, Select, MenuItem, FormControl, InputLabel, CircularProgress, Button } from '@material-ui/core';
+import { Container, Table, TableBody, TableCell, TableHead, TableRow, Paper, TextField, InputAdornment, Grid, Select, MenuItem, FormControl, InputLabel, CircularProgress, Button, Checkbox } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search'
+import { MuiPickersUtilsProvider, DatePicker } from '@material-ui/pickers';
+import DateFnsUtils from '@date-io/date-fns';
 
 import useWindowSize from './hooks/useWindowSize';
 import Row from './components/Row';
@@ -13,6 +15,10 @@ const App = () => {
   const [sortMethod, setSortMethod] = useState(0);
   const [newLocations, setNewLocations] = useState([]);
   const [region, setRegion] = useState('All');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedAdded, setSelectedAdded] = useState(new Date());
+  const [useDate, setUseDate] = useState(false);
+  const [useAdded, setUseAdded] = useState(false);
   const [filter, setFilter] = useState('');
   const windowSize = useWindowSize();
 
@@ -27,7 +33,7 @@ const App = () => {
 
       if (cookie.split('=')[0] === 'region') setRegion(cookie.split('=')[1])
       if (cookie.split('=')[0] === 'sort') setSortMethod(Number.parseInt(cookie.split('=')[1]));
-      
+
     }
 
     fetch('https://locationsofinterest.herokuapp.com/')
@@ -46,14 +52,13 @@ const App = () => {
         for (let [i, chunk] of (currentDay.join('|').match(/(.|[\r\n]){1,4000}/g)).entries()) {
           document.cookie = new Date().getDate() + '/' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear() + i + '=' + chunk;
         }
-        
 
         let newLocs = [];
         for (const loc of currentDay) if (!previouslySeen.includes(loc)) newLocs.push(loc);
         setNewLocations(newLocs);
       })
 
-      
+
   }, []);
 
   const handleSetSort = (event) => {
@@ -82,6 +87,30 @@ const App = () => {
                 onChange={(event) => setFilter(event.target.value.toLowerCase())}
               />
             </Grid>
+            <MuiPickersUtilsProvider utils={DateFnsUtils}>
+              <Grid item>
+                <DatePicker
+                  variant="inline"
+                  format="dd/MM/yyyy"
+                  label="Date"
+                  disabled={!useDate}
+                  value={selectedDate}
+                  onChange={(date) => setSelectedDate(date)}
+                />
+              </Grid>
+              <Checkbox value={useDate} onChange={() => {setUseDate(!useDate)}} style={{paddingTop: 10}}/>
+              <Grid item>
+              <DatePicker
+                  variant="inline"
+                  format="dd/MM/yyyy"
+                  label="Added On"
+                  disabled={!useAdded}
+                  value={selectedAdded}
+                  onChange={(date) => setSelectedAdded(date)}
+                />
+              </Grid>
+              <Checkbox value={useAdded} onChange={() => {setUseAdded(!useAdded)}} style={{paddingTop: 10}}/>
+            </MuiPickersUtilsProvider>
             <Grid item>
               <FormControl>
                 <InputLabel>Sort Method</InputLabel>
@@ -94,7 +123,7 @@ const App = () => {
                 </Select>
               </FormControl>
             </Grid>
-           <Grid item>
+            <Grid item>
               <FormControl>
                 <InputLabel>Region</InputLabel>
                 <Select
@@ -135,15 +164,17 @@ const App = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {[...data].filter(row => 
+                {[...data].filter(row =>
+                  (useDate ? new Date(row.date).toDateString() === selectedDate.toDateString() : true) &&
+                  (useAdded ? new Date(row.added).toDateString() === selectedAdded.toDateString() : true) &&
                   (row.name.toLowerCase().includes(region !== 'All' ? region.toLowerCase() : '') ||
-                  row.address.toLowerCase().includes(region !== 'All' ? region.toLowerCase() : '')) && (
-                  row.name.toLowerCase().includes(filter) ||
-                  row.address.toLowerCase().includes(filter) ||
-                  getTimeFormat(row.time).toLowerCase().includes(filter))
+                    row.address.toLowerCase().includes(region !== 'All' ? region.toLowerCase() : '')) && (
+                    row.name.toLowerCase().includes(filter) ||
+                    row.address.toLowerCase().includes(filter) ||
+                    getTimeFormat(row.time).toLowerCase().includes(filter))
                 )
-                .sort((a, b) => sortMethod === 0 ? new Date(b.added) - new Date(a.added) : new Date(b.date) - new Date(a.date))
-                .map(row => (<Row {...row} newLocations={newLocations}/>))}
+                  .sort((a, b) => sortMethod === 0 ? new Date(b.added) - new Date(a.added) : new Date(b.date) - new Date(a.date))
+                  .map(row => (<Row {...row} newLocations={newLocations} />))}
               </TableBody>
             </Table>
           ) : <CircularProgress style={{ position: 'fixed', top: '45%', left: '48%' }} />}
